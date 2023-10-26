@@ -4,8 +4,8 @@ const { run } = require("hardhat");
 async function main() {
     const jobs = [
         run("verify:verify", {
-            address: "0x764EcF27DF3df771D1c79f48A05aB18d2b6BBa10",
-            constructorArguments: ["0x943931387b8659A74752c8D7B890870899b4Fdaf","0xc82f14458f68f076A4f2E756dB24B56A3C670bB4"]
+            address: "0x4Ca85C1F67fe14CA2496A1eb7Cac77446a125657",
+            constructorArguments: ["0xCABD78a140e869852Fd2Ef1a29c44ae575f33C77","0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46"]
         })
     ];
 

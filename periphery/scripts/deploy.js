@@ -18,7 +18,7 @@ async function main() {
     //* Loading contract factory */
     const ArthurRouter = await ethers.getContractFactory("ArthurRouter");
 
-    const factory = "0x5e18b91bA65Dd227a15A44f9543a74511326BcdD";
+    const factory = "0xCABD78a140e869852Fd2Ef1a29c44ae575f33C77";
     const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
 
     // sepolia

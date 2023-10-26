@@ -33,7 +33,7 @@ interface IArthurPair {
     );
     event Sync(uint112 reserve0, uint112 reserve1);
 
-    function timeLock() external view returns (uint);
+    function getTimeCanRemoveLiquidity() external view returns (uint);
     function MINIMUM_LIQUIDITY() external pure returns (uint);
     function factory() external view returns (address);
     function token0() external view returns (address);

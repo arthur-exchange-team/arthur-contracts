@@ -105,12 +105,12 @@ describe("MerlinPoolFactory", () => {
     describe("addLiquidityAndCreatePosition", () => {
         it('should return successfully', async () => {
             const currentTimestamp = await getTimestamp();
-            await arthurFactory.createPair(tokenA.address, tokenB.address, currentTimestamp + ONE_DAY, currentTimestamp + ONE_DAY);
+            await arthurFactory.createPair(tokenA.address, tokenB.address, ONE_DAY, currentTimestamp + ONE_DAY);
             const lp = await arthurRouter.getPair(tokenA.address, tokenB.address);
             await nftPoolFactory.createPool(lp);
             const nftPool = await nftPoolFactory.getPool(lp);
             await positionHelper.addLiquidityAndCreatePosition(tokenA.address, tokenB.address, ETHER_100K, ETHER_100K.div(2),
-                ETHER_100K, ETHER_100K.div(2), currentTimestamp + ONE_DAY, owner.address, nftPool, ONE_DAY * 183, currentTimestamp + ONE_DAY, currentTimestamp + ONE_DAY);
+                ETHER_100K, ETHER_100K.div(2), currentTimestamp + ONE_DAY, owner.address, nftPool, ONE_DAY * 183, ONE_DAY, currentTimestamp + ONE_DAY);
         });
     });
 });

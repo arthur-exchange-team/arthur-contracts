@@ -11,6 +11,7 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
   using SafeMath  for uint;
 
   uint public constant MINIMUM_LIQUIDITY = 10 ** 3;
+  uint public constant MAXIMUM_TIMELOCK = 90 days;
   bytes4 private constant SELECTOR = bytes4(keccak256(bytes("transfer(address,uint256)")));
 
   address public factory;
@@ -36,6 +37,7 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
   bool public pairTypeImmutable; // if set to true, stableSwap states cannot be updated anymore
 
   uint256 public timeLock;
+  uint256 public initTime;
   uint256 public startTime;
   uint private unlocked = 1;
   modifier lock() {
@@ -90,6 +92,7 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
     precisionMultiplier0 = 10 ** uint(IERC20(_token0).decimals());
     precisionMultiplier1 = 10 ** uint(IERC20(_token1).decimals());
 
+    initTime = block.timestamp;
     timeLock = _timeLock;
     startTime = _startTime;
 
@@ -110,6 +113,11 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
     emit FeePercentUpdated(newToken0FeePercent, newToken1FeePercent);
   }
 
+  /**
+  * @dev Set pair is stable
+  *
+  * Can only be called by the factory's setStableOwner
+  */
   function setStableSwap(bool stable, uint112 expectedReserve0, uint112 expectedReserve1) external lock {
     require(msg.sender == IArthurFactory(factory).setStableOwner(), "ArthurPair: only factory's setStableOwner");
     require(!pairTypeImmutable, "ArthurPair: immutable");
@@ -124,6 +132,11 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
     kLast = (stable && feeOn) ? _k(uint(reserve0), uint(reserve1)) : 0;
   }
 
+  /**
+  * @dev Set pair is mmutable
+  *
+  * Can only be called by the factory's owner
+  */
   function setPairTypeImmutable() external lock {
     require(msg.sender == IArthurFactory(factory).owner(), "ArthurPair: only factory's owner");
     require(!pairTypeImmutable, "ArthurPair: already immutable");
@@ -132,9 +145,15 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
     emit SetPairTypeImmutable();
   }
 
+  /**
+  * @dev Set time lock to remove liquidity
+  *
+  * Can only be called by the factory's owner
+  */
   function setPairTimeLock(uint256 _timeLock) external lock {
     require(msg.sender == IArthurFactory(factory).owner(), "ArthurPair: only factory's owner");
     require(!pairTypeImmutable, "ArthurPair: immutable");
+    require(timeLock <= MAXIMUM_TIMELOCK, "ArthurPair: timeLock mustn't exceed the maximum");
 
     uint256 oldValue = timeLock;
     timeLock = _timeLock;
@@ -142,6 +161,11 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
     emit SetPairTimeLock(oldValue, timeLock);
   }
 
+  /**
+  * @dev Set time start to user can swap
+  *
+  * Can only be called by the factory's owner
+  */
   function setPairStartTime(uint256 _startTime) external lock {
     require(msg.sender == IArthurFactory(factory).owner(), "ArthurPair: only factory's owner");
     require(!pairTypeImmutable, "ArthurPair: immutable");
@@ -217,7 +241,7 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
 
   // this low-level function should be called from a contract which performs important safety checks
   function burn(address to) external lock returns (uint amount0, uint amount1) {
-    require(block.timestamp >= timeLock, "ArthurPair: INVALID_TIME_LOCK");
+    require(block.timestamp >= getTimeCanRemoveLiquidity(), "ArthurPair: INVALID_TIME_LOCK");
     (uint112 _reserve0, uint112 _reserve1,,) = getReserves(); // gas savings
     address _token0 = token0; // gas savings
     address _token1 = token1; // gas savings
@@ -451,5 +475,14 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
     require(token != token0 && token != token1, "ArthurPair: invalid token");
     _safeTransfer(token, to, IERC20(token).balanceOf(address(this)));
     emit DrainWrongToken(token, to);
+  }
+
+  /**
+  * @dev Get time can remove liquidity
+  *
+  * Can only be called by factory's owner
+  */
+  function getTimeCanRemoveLiquidity() public view returns (uint256) {
+    return initTime + timeLock;
   }
 }

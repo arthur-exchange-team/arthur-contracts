@@ -25,7 +25,7 @@ async function main() {
 	console.log("================================================================================");
 
 	// linea
-	const arthurRouter = "0x856CcDB52274275C57BF790F2CA05c5FF3d6D9c4";
+	const arthurRouter = "0x4Ca85C1F67fe14CA2496A1eb7Cac77446a125657";
 	const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
 
 	// mumbai
