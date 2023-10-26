@@ -85,6 +85,7 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
   // called once by the factory at time of deployment
   function initialize(address _token0, address _token1, uint256 _timeLock, uint256 _startTime) external {
     require(msg.sender == factory && !initialized, "ArthurPair: FORBIDDEN");
+    require(timeLock <= MAXIMUM_TIMELOCK, "ArthurPair: timeLock mustn't exceed the maximum");
     // sufficient check
     token0 = _token0;
     token1 = _token1;
