@@ -55,6 +55,9 @@ async function main() {
 	// linea
 	const arthurRouter = "0x01fEfccfF0b9E9F834B6436135cDc14FCf1f5D04";
 	const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
+	const arthurRecovery = accounts[0].address;
+	const feeAddress = accounts[0].address;
+	const treasuryAddress = accounts[0].address;
 
 	// mumbai
 	// const arthurRouter = "0x764EcF27DF3df771D1c79f48A05aB18d2b6BBa10";
@@ -62,7 +65,7 @@ async function main() {
 	// const artToken = "";
 	// const xArtToken = "";
 
-	const artToken = await ArtToken.deploy(parseEther("10000000"), parseEther("7250000"), "178240740740741", accounts[0].address) as ArtToken;
+	const artToken = await ArtToken.deploy(parseEther("10000000"), parseEther("7250000"), "178240740740741", treasuryAddress) as ArtToken;
 	await artToken.deployed();
 	console.log("ArtToken                          deployed to:>>", artToken.address);
 
@@ -78,7 +81,7 @@ async function main() {
 	await arthurMaster.deployed();
 	console.log("ArthurMaster                          deployed to:>>", arthurMaster.address);
 
-	const merlinPoolFactory = await MerlinPoolFactory.deploy(artToken.address, xArtToken.address, accounts[0].address, accounts[0].address) as MerlinPoolFactory;
+	const merlinPoolFactory = await MerlinPoolFactory.deploy(artToken.address, xArtToken.address, arthurRecovery, feeAddress) as MerlinPoolFactory;
 	await merlinPoolFactory.deployed();
 	console.log("MerlinPoolFactory                          deployed to:>>", merlinPoolFactory.address);
 
@@ -134,7 +137,7 @@ async function main() {
 	await hre
 		.run("verify:verify", {
 			address: artToken.address,
-			constructorArguments: [parseEther("10000000"), parseEther("7250000"), "178240740740741", accounts[0].address]
+			constructorArguments: [parseEther("10000000"), parseEther("7250000"), "178240740740741", treasuryAddress]
 		})
 		.catch(console.log);
 
@@ -162,7 +165,7 @@ async function main() {
 	await hre
 		.run("verify:verify", {
 			address: merlinPoolFactory.address,
-			constructorArguments: [artToken.address, xArtToken.address, accounts[0].address, accounts[0].address]
+			constructorArguments: [artToken.address, xArtToken.address, arthurRecovery, feeAddress]
 		})
 		.catch(console.log);
 
