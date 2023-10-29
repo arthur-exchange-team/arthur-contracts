@@ -18,14 +18,16 @@ async function main() {
     //* Loading contract factory */
     const ArthurFactory = await ethers.getContractFactory("ArthurFactory");
     const ProtocolEarnings = await ethers.getContractFactory("ProtocolEarnings");
-    const dividendsWallet = accounts[0].address;
-    const buybackAndBurnWallet = accounts[0].address;
-    const operatingFundsWallet = accounts[0].address;
+    const dividendsWallet = "0x7029C1cD3C6C4B6ACC1967465E6a4187E733A202";
+    const buybackAndBurnWallet = "0xe1e7B1257C5E914F90C838Bb1c92a3ac6ED74887";
+    const operatingFundsWallet = "0x698bFE93375431A576d690E6Fa72dEE8181d966d";
 
     //* Deploy contracts */
     console.log("==========================================================================");
     console.log("DEPLOYING CONTRACTS");
     console.log("==========================================================================");
+
+    // const protocolEarnings = await ProtocolEarnings.attach("0x9C50E2dC5AAFDa51B7739075368E14413a908Ebf");
 
     const protocolEarnings = await ProtocolEarnings.deploy(dividendsWallet, buybackAndBurnWallet, operatingFundsWallet);
     await protocolEarnings.deployed();
@@ -34,6 +36,8 @@ async function main() {
     const arthurFactory = await ArthurFactory.deploy(protocolEarnings.address);
     await arthurFactory.deployed();
     console.log("ArthurFactory                        deployed to:>>", arthurFactory.address);
+
+    await arthurFactory.setOwnerFeeShare("40000");
 
     console.log("==========================================================================");
     console.log("VERIFY CONTRACTS");

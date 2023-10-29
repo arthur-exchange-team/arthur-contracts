@@ -54,6 +54,10 @@ const config = {
             url: process.env.MUMBAI_RPC,
             accounts: [process.env.SYSTEM_TEST_PRIVATE_KEY],
         },
+        frame: {
+            url: 'http://127.0.0.1:1248', // To run inside WSL2, see IP in file /etc/resolv.conf
+            timeout: 4000000
+        }
     },
     etherscan: {
         apiKey: {
@@ -69,6 +73,14 @@ const config = {
                 urls: {
                     apiURL: "https://api-testnet.lineascan.build/api",
                     browserURL: `${process.env.LINEA_TESTNET_RPC}`
+                }
+            },
+            {
+                network: "lineaMainnet",
+                chainId: 59144,
+                urls: {
+                    apiURL: "https://api.lineascan.build/api",
+                    browserURL: `${process.env.LINEA_RPC}`
                 }
             }
         ]

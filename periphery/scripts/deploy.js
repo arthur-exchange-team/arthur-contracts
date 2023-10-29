@@ -18,8 +18,13 @@ async function main() {
     //* Loading contract factory */
     const ArthurRouter = await ethers.getContractFactory("ArthurRouter");
 
-    const factory = "0xf21BA8A951C2e43FC5eDF6E220D2328eA659c81C";
-    const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
+    //linea testnet
+    // const factory = "0xf21BA8A951C2e43FC5eDF6E220D2328eA659c81C";
+    // const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
+
+    //linea mainnet
+    const factory = "0x7f7ae0Ab3783408D30C978831e0d8d0F074a9c5D";
+    const weth = "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f";
 
     // sepolia
     // const factory = "0x9F423958b0e02d6C60D1714a37bc627C23C7d048";

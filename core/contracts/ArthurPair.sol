@@ -480,8 +480,6 @@ contract ArthurPair is IArthurPair, UniswapV2ERC20 {
 
   /**
   * @dev Get time can remove liquidity
-  *
-  * Can only be called by factory's owner
   */
   function getTimeCanRemoveLiquidity() public view returns (uint256) {
     return initTime + timeLock;
