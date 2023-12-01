@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import {
-	PositionHelper__factory,
-	PositionHelper
+	TokenTest__factory,
+	TokenTest
 } from "../typechain-types";
 
 async function main() {
@@ -17,23 +17,18 @@ async function main() {
 	}
 
 	//* Loading contract factory */
-	const PositionHelper: PositionHelper__factory = await hre.ethers.getContractFactory("PositionHelper");
+	const TokenTest: TokenTest__factory = await hre.ethers.getContractFactory("TokenTest");
 
 	//* Deploy contracts */
 	console.log("================================================================================");
 	console.log("DEPLOYING CONTRACTS");
 	console.log("================================================================================");
 
-	// linea
-	const flashpadRouter = "0x5dcC77799aA55207c3A69D63FfB706463cd834B8";
-	const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
+	const tokenTest = await TokenTest.deploy() as TokenTest;
+	await tokenTest.deployed();
+	console.log("TokenTest                          deployed to:>>", tokenTest.address);
 
-	// mumbai
-	// const flashpadRouter = "0x764EcF27DF3df771D1c79f48A05aB18d2b6BBa10";
-	// const weth = "0xc82f14458f68f076A4f2E756dB24B56A3C670bB4";
-	const positionHelper = await PositionHelper.deploy(flashpadRouter, weth) as PositionHelper;
-	await positionHelper.deployed();
-	console.log("PositionHelper                          deployed to:>>", positionHelper.address);
+	await tokenTest.mint(accounts[0].address, "1000000000000000");
 
 	console.log("================================================================================");
 	console.log("DONE");
@@ -41,8 +36,7 @@ async function main() {
 
 	await hre
 		.run("verify:verify", {
-			address: positionHelper.address,
-			constructorArguments: [flashpadRouter, weth]
+			address: tokenTest.address
 		})
 		.catch(console.log);
 }

@@ -2,22 +2,22 @@ pragma solidity 0.8.16;
 
 import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 
-import "excalibur-core/contracts/interfaces/IArthurFactory.sol";
-import "excalibur-core/contracts/interfaces/IArthurPair.sol";
+import "excalibur-core/contracts/interfaces/IFlashpadFactory.sol";
+import "excalibur-core/contracts/interfaces/IFlashpadPair.sol";
 import "excalibur-core/contracts/interfaces/IERC20.sol";
 
-import "./interfaces/IArthurRouter.sol";
+import "./interfaces/IFlashpadRouter.sol";
 import "./libraries/UniswapV2Library.sol";
 import "./libraries/SafeMath.sol";
 import "./interfaces/IWETH.sol";
 
-contract ArthurRouter is IArthurRouter {
+contract FlashpadRouter is IFlashpadRouter {
     using SafeMath for uint;
     address public immutable override factory;
     address public immutable override WETH;
 
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, "ArthurRouter: EXPIRED");
+        require(deadline >= block.timestamp, "FlashpadRouter: EXPIRED");
         _;
     }
 
@@ -46,8 +46,8 @@ contract ArthurRouter is IArthurRouter {
         uint startTime
     ) internal returns (uint amountA, uint amountB) {
         // create the pair if it doesn't exist yet
-        if (IArthurFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IArthurFactory(factory).createPair(tokenA, tokenB, timeLock, startTime);
+        if (IFlashpadFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IFlashpadFactory(factory).createPair(tokenA, tokenB, timeLock, startTime);
         }
         (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
@@ -55,12 +55,12 @@ contract ArthurRouter is IArthurRouter {
         } else {
             uint amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, "ArthurRouter: INSUFFICIENT_B_AMOUNT");
+                require(amountBOptimal >= amountBMin, "FlashpadRouter: INSUFFICIENT_B_AMOUNT");
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
                 uint amountAOptimal = UniswapV2Library.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, "ArthurRouter: INSUFFICIENT_A_AMOUNT");
+                require(amountAOptimal >= amountAMin, "FlashpadRouter: INSUFFICIENT_A_AMOUNT");
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
@@ -91,7 +91,7 @@ contract ArthurRouter is IArthurRouter {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = IArthurPair(pair).mint(to);
+        liquidity = IFlashpadPair(pair).mint(to);
     }
 
     function addLiquidityETH(
@@ -118,7 +118,7 @@ contract ArthurRouter is IArthurRouter {
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = IArthurPair(pair).mint(to);
+        liquidity = IFlashpadPair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
@@ -134,14 +134,14 @@ contract ArthurRouter is IArthurRouter {
         uint deadline
     ) public override ensure(deadline) returns (uint amountA, uint amountB) {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
-        require(block.timestamp >= IArthurPair(pair).getTimeCanRemoveLiquidity(), "ArthurRouter: INVALID_TIME_LOCK");
-        IArthurPair(pair).transferFrom(msg.sender, pair, liquidity);
+        require(block.timestamp >= IFlashpadPair(pair).getTimeCanRemoveLiquidity(), "FlashpadRouter: INVALID_TIME_LOCK");
+        IFlashpadPair(pair).transferFrom(msg.sender, pair, liquidity);
         // send liquidity to pair
-        (uint amount0, uint amount1) = IArthurPair(pair).burn(to);
+        (uint amount0, uint amount1) = IFlashpadPair(pair).burn(to);
         (address token0, ) = UniswapV2Library.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
-        require(amountA >= amountAMin, "ArthurRouter: INSUFFICIENT_A_AMOUNT");
-        require(amountB >= amountBMin, "ArthurRouter: INSUFFICIENT_B_AMOUNT");
+        require(amountA >= amountAMin, "FlashpadRouter: INSUFFICIENT_A_AMOUNT");
+        require(amountB >= amountBMin, "FlashpadRouter: INSUFFICIENT_B_AMOUNT");
     }
 
     function removeLiquidityETH(
@@ -181,7 +181,7 @@ contract ArthurRouter is IArthurRouter {
     ) external override returns (uint amountA, uint amountB) {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
         uint value = approveMax ? type(uint256).max : liquidity;
-        IArthurPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IFlashpadPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
@@ -199,7 +199,7 @@ contract ArthurRouter is IArthurRouter {
     ) external override returns (uint amountToken, uint amountETH) {
         address pair = UniswapV2Library.pairFor(factory, token, WETH);
         uint value = approveMax ? type(uint256).max : liquidity;
-        IArthurPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IFlashpadPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
@@ -232,7 +232,7 @@ contract ArthurRouter is IArthurRouter {
     ) external override returns (uint amountETH) {
         address pair = UniswapV2Library.pairFor(factory, token, WETH);
         uint value = approveMax ? type(uint256).max : liquidity;
-        IArthurPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IFlashpadPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         amountETH = removeLiquidityETHSupportingFeeOnTransferTokens(
             token,
             liquidity,
@@ -251,7 +251,7 @@ contract ArthurRouter is IArthurRouter {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
             (address token0, ) = UniswapV2Library.sortTokens(input, output);
-            IArthurPair pair = IArthurPair(UniswapV2Library.pairFor(factory, input, output));
+            IFlashpadPair pair = IFlashpadPair(UniswapV2Library.pairFor(factory, input, output));
             uint amountOutput;
             {
                 // scope to avoid stack too deep errors
@@ -286,7 +286,7 @@ contract ArthurRouter is IArthurRouter {
         _swapSupportingFeeOnTransferTokens(path, to, referrer);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            "ArthurRouter: INSUFFICIENT_OUTPUT_AMOUNT"
+            "FlashpadRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
     }
 
@@ -297,7 +297,7 @@ contract ArthurRouter is IArthurRouter {
         address referrer,
         uint deadline
     ) external payable override ensure(deadline) {
-        require(path[0] == WETH, "ArthurRouter: INVALID_PATH");
+        require(path[0] == WETH, "FlashpadRouter: INVALID_PATH");
         uint amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
         assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn));
@@ -306,7 +306,7 @@ contract ArthurRouter is IArthurRouter {
         _swapSupportingFeeOnTransferTokens(path, to, referrer);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            "ArthurRouter: INSUFFICIENT_OUTPUT_AMOUNT"
+            "FlashpadRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
     }
 
@@ -318,7 +318,7 @@ contract ArthurRouter is IArthurRouter {
         address referrer,
         uint deadline
     ) external override ensure(deadline) {
-        require(path[path.length - 1] == WETH, "ArthurRouter: INVALID_PATH");
+        require(path[path.length - 1] == WETH, "FlashpadRouter: INVALID_PATH");
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
@@ -327,7 +327,7 @@ contract ArthurRouter is IArthurRouter {
         );
         _swapSupportingFeeOnTransferTokens(path, address(this), referrer);
         uint amountOut = IERC20(WETH).balanceOf(address(this));
-        require(amountOut >= amountOutMin, "ArthurRouter: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(amountOut >= amountOutMin, "FlashpadRouter: INSUFFICIENT_OUTPUT_AMOUNT");
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }

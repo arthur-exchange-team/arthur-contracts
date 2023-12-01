@@ -9,18 +9,18 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./interfaces/INFTHandler.sol";
-import "./interfaces/IArthurMaster.sol";
+import "./interfaces/IFlashpadMaster.sol";
 import "./interfaces/INFTPool.sol";
 import "./interfaces/IYieldBooster.sol";
-import "./interfaces/tokens/IXArtToken.sol";
+import "./interfaces/tokens/IXFlashToken.sol";
 
 
 /*
  * This contract wraps ERC20 assets into non-fungible staking positions called spNFTs
  * spNFTs add the possibility to create an additional layer on liquidity providing lock features
- * spNFTs are yield-generating positions when the NFTPool contract has allocations from the Arthur Master
+ * spNFTs are yield-generating positions when the NFTPool contract has allocations from the Flashpad Master
  */
-contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position NFT", "spNFT") {
+contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Flashpad staking position NFT", "spNFT") {
   using Address for address;
   using Counters for Counters.Counter;
   using EnumerableSet for EnumerableSet.AddressSet;
@@ -36,9 +36,9 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
     uint256 lockDuration; // The lock duration in seconds
     uint256 lockMultiplier; // Active lock multiplier (times 1e2)
     uint256 rewardDebt; // Reward debt
-    uint256 boostPoints; // Allocated xART from yieldboost contract (optional)
-    uint256 totalMultiplier; // lockMultiplier + allocated xART boostPoints multiplier
-    uint256 pendingXArtRewards; // Not harvested xArt rewards
+    uint256 boostPoints; // Allocated xFLASH from yieldboost contract (optional)
+    uint256 totalMultiplier; // lockMultiplier + allocated xFLASH boostPoints multiplier
+    uint256 pendingXArtRewards; // Not harvested xFlash rewards
     uint256 pendingArtRewards; // Not harvested Art rewards
   }
 
@@ -46,13 +46,13 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
 
   EnumerableSet.AddressSet private _unlockOperators; // Addresses allowed to forcibly unlock locked spNFTs
   address public operator; // Used to delegate multiplier settings to project's owners
-  IArthurMaster public master; // Address of the master
+  IFlashpadMaster public master; // Address of the master
   address public immutable factory; // NFTPoolFactory contract's address
   bool public initialized;
 
   IERC20 private _lpToken; // Deposit token contract's address
-  IERC20 private _artToken; // ArtToken contract's address
-  IXArtToken private _xArtToken; // XArtToken contract's address
+  IERC20 private _flashToken; // FlashToken contract's address
+  IXFlashToken private _xFlashToken; // XFlashToken contract's address
   uint256 private _lpSupply; // Sum of deposit tokens on this pool
   uint256 private _lpSupplyWithMultiplier; // Sum of deposit token on this pool including the user's total multiplier (lockMultiplier + boostPoints)
   uint256 private _accRewardsPerShare; // Accumulated Rewards (staked token) per share, times 1e18. See below
@@ -64,10 +64,10 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
   uint256 private _maxGlobalMultiplier = 20000; // 200%
   uint256 private _maxLockDuration = 183 days; // 6 months, Capped lock duration to have the maximum bonus lockMultiplier
   uint256 private _maxLockMultiplier = 10000; // 100%, Max available lockMultiplier (100 = 1%)
-  uint256 private _maxBoostMultiplier = 10000; // 100%, Max boost that can be earned from xArt yieldBooster
+  uint256 private _maxBoostMultiplier = 10000; // 100%, Max boost that can be earned from xFlash yieldBooster
 
-  uint256 private constant _TOTAL_REWARDS_SHARES = 10000; // 100%, high limit for xArtRewardsShare
-  uint256 public xArtRewardsShare = 8000; // 80%, directly defines artShare with the remaining value to 100%
+  uint256 private constant _TOTAL_REWARDS_SHARES = 10000; // 100%, high limit for xFlashRewardsShare
+  uint256 public xFlashRewardsShare = 8000; // 80%, directly defines artShare with the remaining value to 100%
 
   bool public emergencyUnlock; // Release all locks in case of emergency
 
@@ -78,16 +78,16 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
     factory = msg.sender;
   }
 
-  function initialize(IArthurMaster master_, IERC20 artToken, IXArtToken xArtToken, IERC20 lpToken) external {
+  function initialize(IFlashpadMaster master_, IERC20 flashToken, IXFlashToken xFlashToken, IERC20 lpToken) external {
     require(msg.sender == factory && !initialized, "FORBIDDEN");
     _lpToken = lpToken;
     master = master_;
-    _artToken = artToken;
-    _xArtToken = xArtToken;
+    _flashToken = flashToken;
+    _xFlashToken = xFlashToken;
     initialized = true;
 
-    // to convert ART to xART
-   _artToken.approve(address(_xArtToken), type(uint256).max);
+    // to convert FLASH to xFLASH
+   _flashToken.approve(address(_xFlashToken), type(uint256).max);
   }
 
 
@@ -109,7 +109,7 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
 
   event SetLockMultiplierSettings(uint256 maxLockDuration, uint256 maxLockMultiplier);
   event SetBoostMultiplierSettings(uint256 maxGlobalMultiplier, uint256 maxBoostMultiplier);
-  event SetXArtRewardsShare(uint256 xArtRewardsShare);
+  event SetXArtRewardsShare(uint256 xFlashRewardsShare);
   event SetUnlockOperator(address operator, bool isAdded);
   event SetEmergencyUnlock(bool emergencyUnlock);
   event SetOperator(address operator);
@@ -235,12 +235,12 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
    * @dev Returns general "pool" info for this contract
    */
   function getPoolInfo() external view override returns (
-    address lpToken, address artToken, address xArtToken, uint256 lastRewardTime, uint256 accRewardsPerShare,
+    address lpToken, address flashToken, address xFlashToken, uint256 lastRewardTime, uint256 accRewardsPerShare,
     uint256 lpSupply, uint256 lpSupplyWithMultiplier, uint256 allocPoint
   ) {
     (, allocPoint, lastRewardTime,,) = master.getPoolInfo(address(this));
     return (
-    address(_lpToken), address(_artToken), address(_xArtToken), lastRewardTime, _accRewardsPerShare,
+    address(_lpToken), address(_flashToken), address(_xFlashToken), lastRewardTime, _accRewardsPerShare,
     _lpSupply, _lpSupplyWithMultiplier, allocPoint
     );
   }
@@ -362,17 +362,17 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
   }
 
   /**
-   * @dev Set the share of xART for the distributed rewards
-   * The share of ART will incidently be 100% - xArtRewardsShare
+   * @dev Set the share of xFLASH for the distributed rewards
+   * The share of FLASH will incidently be 100% - xFlashRewardsShare
    *
    * Must only be called by the owner
    */
-  function setXArtRewardsShare(uint256 xArtRewardsShare_) external {
+  function setXArtRewardsShare(uint256 xFlashRewardsShare_) external {
     _requireOnlyOwner();
-    require(xArtRewardsShare_ <= _TOTAL_REWARDS_SHARES, "too high");
+    require(xFlashRewardsShare_ <= _TOTAL_REWARDS_SHARES, "too high");
 
-    xArtRewardsShare = xArtRewardsShare_;
-    emit SetXArtRewardsShare(xArtRewardsShare_);
+    xFlashRewardsShare = xFlashRewardsShare_;
+    emit SetXArtRewardsShare(xFlashRewardsShare_);
   }
 
   /**
@@ -801,7 +801,7 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
    * @dev Destroys spNFT
    *
    * "boostPointsToDeallocate" is set to 0 to ignore boost points handling if called during an emergencyWithdraw
-   * Users should still be able to deallocate xART from the YieldBooster contract
+   * Users should still be able to deallocate xFLASH from the YieldBooster contract
    */
   function _destroyPosition(uint256 tokenId, uint256 boostPoints) internal {
     // calls yieldBooster contract to deallocate the spNFT's owner boost points if any
@@ -895,27 +895,27 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
 
     // transfer rewards
     if (pending > 0 || position.pendingXArtRewards > 0 || position.pendingArtRewards > 0) {
-      uint256 xArtRewards = pending.mul(xArtRewardsShare).div(_TOTAL_REWARDS_SHARES);
-      uint256 artAmount = pending.add(position.pendingArtRewards).sub(xArtRewards);
+      uint256 xFlashRewards = pending.mul(xFlashRewardsShare).div(_TOTAL_REWARDS_SHARES);
+      uint256 artAmount = pending.add(position.pendingArtRewards).sub(xFlashRewards);
 
-      xArtRewards = xArtRewards.add(position.pendingXArtRewards);
+      xFlashRewards = xFlashRewards.add(position.pendingXArtRewards);
 
       // Stack rewards in a buffer if to is equal to address(0)
       if (address(0) == to) {
-        position.pendingXArtRewards = xArtRewards;
+        position.pendingXArtRewards = xFlashRewards;
         position.pendingArtRewards = artAmount;
       }
       else {
-        // convert and send xART + ART rewards
+        // convert and send xFLASH + FLASH rewards
         position.pendingXArtRewards = 0;
         position.pendingArtRewards = 0;
 
-        if(xArtRewards > 0) xArtRewards = _safeConvertTo(to, xArtRewards);
-        // send share of ART rewards
+        if(xFlashRewards > 0) xFlashRewards = _safeConvertTo(to, xFlashRewards);
+        // send share of FLASH rewards
         artAmount= _safeRewardsTransfer(to, artAmount);
 
         // forbidden to harvest if contract has not explicitly confirmed it handle it
-        _checkOnNFTHarvest(to, tokenId, artAmount, xArtRewards);
+        _checkOnNFTHarvest(to, tokenId, artAmount, xFlashRewards);
       }
     }
     emit HarvestPosition(tokenId, to, pending);
@@ -961,36 +961,36 @@ contract NFTPool is ReentrancyGuard, INFTPool, ERC721("Arthur staking position N
    * @dev Safe token transfer function, in case rounding error causes pool to not have enough tokens
    */
   function _safeRewardsTransfer(address to, uint256 amount) internal returns (uint256) {
-    uint256 balance = _artToken.balanceOf(address(this));
+    uint256 balance = _flashToken.balanceOf(address(this));
     // cap to available balance
     if (amount > balance) {
       amount = balance;
     }
-    _artToken.safeTransfer(to, amount);
+    _flashToken.safeTransfer(to, amount);
     return amount;
   }
 
   /**
-   * @dev Safe convert ART to xART function, in case rounding error causes pool to not have enough tokens
+   * @dev Safe convert FLASH to xFLASH function, in case rounding error causes pool to not have enough tokens
    */
   function _safeConvertTo(address to, uint256 amount) internal returns (uint256) {
-    uint256 balance = _artToken.balanceOf(address(this));
+    uint256 balance = _flashToken.balanceOf(address(this));
     // cap to available balance
     if (amount > balance) {
       amount = balance;
     }
-    if(amount > 0 ) _xArtToken.convertTo(amount, to);
+    if(amount > 0 ) _xFlashToken.convertTo(amount, to);
     return amount;
   }
 
   /**
    * @dev If NFT's owner is a contract, confirm whether it's able to handle rewards harvesting
    */
-  function _checkOnNFTHarvest(address to, uint256 tokenId, uint256 artAmount, uint256 xArtAmount) internal {
+  function _checkOnNFTHarvest(address to, uint256 tokenId, uint256 artAmount, uint256 xFlashAmount) internal {
     address nftOwner = ERC721.ownerOf(tokenId);
     if (nftOwner.isContract()) {
       bytes memory returndata = nftOwner.functionCall(abi.encodeWithSelector(
-          INFTHandler(nftOwner).onNFTHarvest.selector, msg.sender, to, tokenId, artAmount, xArtAmount), "non implemented");
+          INFTHandler(nftOwner).onNFTHarvest.selector, msg.sender, to, tokenId, artAmount, xFlashAmount), "non implemented");
       require(abi.decode(returndata, (bool)), "FORBIDDEN");
     }
   }

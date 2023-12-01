@@ -2,7 +2,7 @@ pragma solidity >=0.5.0;
 
 import "./SafeMath.sol";
 
-import "excalibur-core/contracts/interfaces/IArthurPair.sol";
+import "excalibur-core/contracts/interfaces/IFlashpadPair.sol";
 
 library UniswapV2Library {
     using SafeMath for uint;
@@ -21,14 +21,14 @@ library UniswapV2Library {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'81385858af2776e6fd64d931a89d0b6b1f526cfcfa0444f6374095d8c7106e32' // init code hash
+                hex'b7429c44a757df00f37137f101aedbaf19309c941c7dc692903b2423d46fe37a' // init code hash
             )))));
     }
 
     // fetches and sorts the reserves for a pair
     function getReserves(address factory, address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
         (address token0,) = sortTokens(tokenA, tokenB);
-        (uint reserve0, uint reserve1,,) = IArthurPair(pairFor(factory, tokenA, tokenB)).getReserves();
+        (uint reserve0, uint reserve1,,) = IFlashpadPair(pairFor(factory, tokenA, tokenB)).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
@@ -45,7 +45,7 @@ library UniswapV2Library {
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
-            IArthurPair pair = IArthurPair(pairFor(factory, path[i], path[i + 1]));
+            IFlashpadPair pair = IFlashpadPair(pairFor(factory, path[i], path[i + 1]));
             amounts[i + 1] = pair.getAmountOut(amounts[i], path[i]);
         }
     }

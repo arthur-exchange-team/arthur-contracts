@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import {
-	PositionHelper__factory,
-	PositionHelper
+	Presale__factory,
+	Presale
 } from "../typechain-types";
 
 async function main() {
@@ -17,23 +17,16 @@ async function main() {
 	}
 
 	//* Loading contract factory */
-	const PositionHelper: PositionHelper__factory = await hre.ethers.getContractFactory("PositionHelper");
+	const Presale: Presale__factory = await hre.ethers.getContractFactory("Presale");
 
 	//* Deploy contracts */
 	console.log("================================================================================");
 	console.log("DEPLOYING CONTRACTS");
 	console.log("================================================================================");
 
-	// linea
-	const flashpadRouter = "0x5dcC77799aA55207c3A69D63FfB706463cd834B8";
-	const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
-
-	// mumbai
-	// const flashpadRouter = "0x764EcF27DF3df771D1c79f48A05aB18d2b6BBa10";
-	// const weth = "0xc82f14458f68f076A4f2E756dB24B56A3C670bB4";
-	const positionHelper = await PositionHelper.deploy(flashpadRouter, weth) as PositionHelper;
-	await positionHelper.deployed();
-	console.log("PositionHelper                          deployed to:>>", positionHelper.address);
+	const presale = await Presale.deploy("0xb056CeD9d51eb4A9C366229921CAC57E8A7a17c3", "0xF34BAEc8B153E2d14DCC99F0bA9b0bB539Bbe68d", "0x347b29EFca2f921fFc776Cdc01AF785f043368c6", "0xc03Fb6348B6a3c95B1c3ad63a0b90ebBdd615110", "1699840200", "1700445000", accounts[0].address) as Presale;
+	await presale.deployed();
+	console.log("Presale                          deployed to:>>", presale.address);
 
 	console.log("================================================================================");
 	console.log("DONE");
@@ -41,8 +34,8 @@ async function main() {
 
 	await hre
 		.run("verify:verify", {
-			address: positionHelper.address,
-			constructorArguments: [flashpadRouter, weth]
+			address: presale.address,
+			constructorArguments: ["0xb056CeD9d51eb4A9C366229921CAC57E8A7a17c3", "0xF34BAEc8B153E2d14DCC99F0bA9b0bB539Bbe68d", "0x347b29EFca2f921fFc776Cdc01AF785f043368c6", "0xc03Fb6348B6a3c95B1c3ad63a0b90ebBdd615110", "1699840200", "1700445000", accounts[0].address]
 		})
 		.catch(console.log);
 }

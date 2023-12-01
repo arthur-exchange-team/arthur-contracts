@@ -11,18 +11,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/INFTHandler.sol";
 import "./interfaces/INFTPool.sol";
-import "./interfaces/IMerlinPoolFactory.sol";
-import "./interfaces/tokens/IArtToken.sol";
-import "./interfaces/tokens/IXArtToken.sol";
-import "./interfaces/IMerlinCustomReq.sol";
+import "./interfaces/IThunderPoolFactory.sol";
+import "./interfaces/tokens/IFlashToken.sol";
+import "./interfaces/tokens/IXFlashToken.sol";
+import "./interfaces/IThunderCustomReq.sol";
 
 
-contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
+contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     using EnumerableSet for EnumerableSet.UintSet;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IXArtToken;
-    using SafeERC20 for IArtToken;
+    using SafeERC20 for IXFlashToken;
+    using SafeERC20 for IFlashToken;
     using SafeMath for uint256;
 
     struct UserInfo {
@@ -42,7 +42,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
         uint256 lockEndReq; // (optional) required lock end time for positions
         uint256 depositAmountReq; // (optional) required deposit amount for positions
         bool whitelist; // (optional) to only allow whitelisted users to deposit
-        string description; // Project's description for this MerlinPool
+        string description; // Project's description for this ThunderPool
     }
 
     struct RewardsToken {
@@ -59,16 +59,16 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
 
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
 
-    IMerlinPoolFactory public factory; // MerlinPoolFactory address
-    IArtToken public artToken; // ARTToken contract
-    IXArtToken public xArtToken; // xARTToken contract
+    IThunderPoolFactory public factory; // ThunderPoolFactory address
+    IFlashToken public flashToken; // FLASHToken contract
+    IXFlashToken public xFlashToken; // xFLASHToken contract
     INFTPool public nftPool; // NFTPool contract
-    IMerlinCustomReq public customReqContract; // (optional) external contracts allow to handle custom requirements
+    IThunderCustomReq public customReqContract; // (optional) external contracts allow to handle custom requirements
 
-    uint256 public creationTime; // Creation time of this MerlinPool
+    uint256 public creationTime; // Creation time of this ThunderPool
 
-    bool public published; // Is MerlinPool published
-    uint256 public publishTime; // Time at which the MerlinPool was published
+    bool public published; // Is ThunderPool published
+    uint256 public publishTime; // Time at which the ThunderPool was published
 
     bool public emergencyClose; // When activated, can't distribute rewards anymore
 
@@ -87,10 +87,10 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     Settings public settings; // global and requirements settings
 
     constructor(
-        IArtToken artToken_, IXArtToken xArtToken_, address owner_, INFTPool nftPool_,
+        IFlashToken flashToken_, IXFlashToken xFlashToken_, address owner_, INFTPool nftPool_,
         IERC20 rewardsToken1_, IERC20 rewardsToken2_, Settings memory settings_
     ) {
-        require(address(artToken_) != address(0) && address(xArtToken_) != address(0) && owner_ != address(0)
+        require(address(flashToken_) != address(0) && address(xFlashToken_) != address(0) && owner_ != address(0)
             && address(nftPool_) != address(0) && address(rewardsToken1_) != address(0), "zero address");
         require(_currentBlockTimestamp() < settings_.startTime, "invalid startTime");
         require(settings_.startTime < settings_.endTime, "invalid endTime");
@@ -98,10 +98,10 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
         require(settings_.harvestStartTime == 0 || settings_.startTime <= settings_.harvestStartTime, "invalid harvestStartTime");
         require(address(rewardsToken1_) != address(rewardsToken2_), "invalid tokens");
 
-        factory = IMerlinPoolFactory(msg.sender);
+        factory = IThunderPoolFactory(msg.sender);
 
-        artToken = artToken_;
-        xArtToken = xArtToken_;
+        flashToken = flashToken_;
+        xFlashToken = xFlashToken_;
         nftPool = nftPool_;
         creationTime = _currentBlockTimestamp();
 
@@ -244,7 +244,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     /*****************************************************************/
 
     /**
-     * @dev Update this MerlinPool
+     * @dev Update this ThunderPool
      */
     function updatePool() external nonReentrant {
         _updatePool();
@@ -272,7 +272,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Withdraw a position from the MerlinPool
+     * @dev Withdraw a position from the ThunderPool
      *
      * Can only be called by the position's previous owner
      */
@@ -300,7 +300,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Withdraw a position from the MerlinPool without caring about rewards, EMERGENCY ONLY
+     * @dev Withdraw a position from the ThunderPool without caring about rewards, EMERGENCY ONLY
      *
      * Can only be called by position's previous owner
      */
@@ -324,7 +324,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Harvest pending MerlinPool rewards
+     * @dev Harvest pending ThunderPool rewards
      */
     function harvest() external nonReentrant {
         _updatePool();
@@ -337,19 +337,19 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
      * @dev Allow stacked positions to be harvested
      *
      * "to" can be set to token's previous owner
-     * "to" can be set to this address only if this contract is allowed to transfer xART
+     * "to" can be set to this address only if this contract is allowed to transfer xFLASH
      */
-    function onNFTHarvest(address operator, address to, uint256 tokenId, uint256 artAmount, uint256 xArtAmount) external override isValidNFTPool(msg.sender) returns (bool) {
+    function onNFTHarvest(address operator, address to, uint256 tokenId, uint256 artAmount, uint256 xFlashAmount) external override isValidNFTPool(msg.sender) returns (bool) {
         address owner = tokenIdOwner[tokenId];
         require(operator == owner, "not allowed");
 
-        // if not whitelisted, the MerlinPool can't transfer any xART rewards
-        require(to != address(this) || xArtToken.isTransferWhitelisted(address(this)), "cant handle rewards");
+        // if not whitelisted, the ThunderPool can't transfer any xFLASH rewards
+        require(to != address(this) || xFlashToken.isTransferWhitelisted(address(this)), "cant handle rewards");
 
         // redirect rewards to position's previous owner
         if (to == address(this)) {
-            artToken.safeTransfer(owner, artAmount);
-            xArtToken.safeTransfer(owner, xArtAmount);
+            flashToken.safeTransfer(owner, artAmount);
+            xFlashToken.safeTransfer(owner, xFlashAmount);
         }
 
         return true;
@@ -377,34 +377,34 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     /*****************************************************************/
 
     /**
-     * @dev Transfer ownership of this MerlinPool
+     * @dev Transfer ownership of this ThunderPool
      *
      * Must only be called by the owner of this contract
      */
     function transferOwnership(address newOwner) public override onlyOwner {
-        _setMerlinPoolOwner(newOwner);
+        _setThunderPoolOwner(newOwner);
         Ownable.transferOwnership(newOwner);
     }
 
     /**
-     * @dev Transfer ownership of this MerlinPool
+     * @dev Transfer ownership of this ThunderPool
      *
      * Must only be called by the owner of this contract
      */
     function renounceOwnership() public override onlyOwner {
-        _setMerlinPoolOwner(address(0));
+        _setThunderPoolOwner(address(0));
         Ownable.renounceOwnership();
     }
 
     /**
-     * @dev Add rewards to this MerlinPool
+     * @dev Add rewards to this ThunderPool
      */
     function addRewards(uint256 amountToken1, uint256 amountToken2) external nonReentrant {
         require(_currentBlockTimestamp() < settings.endTime, "pool ended");
         _updatePool();
 
-        // get active fee share for this MerlinPool
-        uint256 feeShare = factory.getMerlinPoolFee(address(this), owner());
+        // get active fee share for this ThunderPool
+        uint256 feeShare = factory.getThunderPoolFee(address(this), owner());
         address feeAddress = factory.feeAddress();
         uint256 feeAmount;
 
@@ -444,10 +444,10 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Withdraw rewards from this MerlinPool
+     * @dev Withdraw rewards from this ThunderPool
      *
      * Must only be called by the owner
-     * Must only be called before the publication of the Merlin Pool
+     * Must only be called before the publication of the Thunder Pool
      */
     function withdrawRewards(uint256 amountToken1, uint256 amountToken2) external onlyOwner nonReentrant {
         require(!published, "published");
@@ -492,13 +492,13 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     function setCustomReqContract(address contractAddress) external onlyOwner {
         // Allow to disable customReq event if pool is published
         require(!published || contractAddress == address(0), "published");
-        customReqContract = IMerlinCustomReq(contractAddress);
+        customReqContract = IThunderCustomReq(contractAddress);
 
         emit SetCustomReqContract(contractAddress);
     }
 
     /**
-     * @dev Set requirements that positions must meet to be staked on this Merlin Pool
+     * @dev Set requirements that positions must meet to be staked on this Thunder Pool
      *
      * Must only be called by the owner
      */
@@ -510,7 +510,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
      * @dev Set the pool's datetime settings
      *
      * Must only be called by the owner
-     * Merlin duration can only be extended once already published
+     * Thunder duration can only be extended once already published
      * Harvest start time can only be updated if not published
      * Deposit end time can only be updated if not been published
      */
@@ -580,19 +580,19 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Publish the merlin Pool
+     * @dev Publish the thunder Pool
      *
      * Must only be called by the owner
      */
     function publish() external onlyOwner {
         require(!published, "published");
-        // this merlinPool is Stale
+        // this thunderPool is Stale
         require(settings.startTime > _currentBlockTimestamp(), "stale");
         require(rewardsToken1.amount > 0, "no rewards");
 
         published = true;
         publishTime = _currentBlockTimestamp();
-        factory.publishMerlinPool(address(nftPool));
+        factory.publishThunderPool(address(nftPool));
 
         emit Publish();
     }
@@ -630,7 +630,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     /********************************************************/
 
     /**
-     * @dev Set requirements that positions must meet to be staked on this Merlin Pool
+     * @dev Set requirements that positions must meet to be staked on this Thunder Pool
      */
     function _setRequirements(uint256 lockDurationReq_, uint256 lockEndReq_, uint256 depositAmountReq_, bool whitelist_) internal {
         require(lockEndReq_ == 0 || settings.startTime < lockEndReq_, "invalid lockEnd");
@@ -652,7 +652,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Updates rewards states of this Merlin Pool to be up-to-date
+     * @dev Updates rewards states of this Thunder Pool to be up-to-date
      */
     function _updatePool() internal {
         uint256 currentBlockTimestamp = _currentBlockTimestamp();
@@ -688,7 +688,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Add a user's deposited amount into this Merlin Pool
+     * @dev Add a user's deposited amount into this Thunder Pool
      */
     function _deposit(address account, uint256 tokenId, uint256 amount) internal {
         require((settings.depositEndTime == 0 || settings.depositEndTime >= _currentBlockTimestamp()) && !emergencyClose, "not allowed");
@@ -763,7 +763,7 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-     * @dev Check whether a position with "tokenId" ID is meeting all of this Merlin Pool's active requirements
+     * @dev Check whether a position with "tokenId" ID is meeting all of this Thunder Pool's active requirements
      */
     function _checkPositionRequirements(uint256 amount, uint256 startLockTime, uint256 lockDuration) internal virtual {
         // lock duration requirement
@@ -812,8 +812,8 @@ contract MerlinPool is ReentrancyGuard, Ownable, INFTHandler {
         (amount,, startLockTime, lockDuration,,,,) = nftPool.getStakingPosition(tokenId);
     }
 
-    function _setMerlinPoolOwner(address newOwner) internal {
-        factory.setMerlinPoolOwner(owner(), newOwner);
+    function _setThunderPoolOwner(address newOwner) internal {
+        factory.setThunderPoolOwner(owner(), newOwner);
     }
 
     /**

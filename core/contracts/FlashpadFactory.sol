@@ -1,9 +1,9 @@
 pragma solidity =0.5.16;
 
-import "./interfaces/IArthurFactory.sol";
-import "./ArthurPair.sol";
+import "./interfaces/IFlashpadFactory.sol";
+import "./FlashpadPair.sol";
 
-contract ArthurFactory is IArthurFactory {
+contract FlashpadFactory is IFlashpadFactory {
     address public owner;
     address public feePercentOwner;
     address public setStableOwner;
@@ -43,7 +43,7 @@ contract ArthurFactory is IArthurFactory {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(owner == msg.sender, "ArthurFactory: caller is not the owner");
+        require(owner == msg.sender, "FlashpadFactory: caller is not the owner");
         _;
     }
 
@@ -52,17 +52,17 @@ contract ArthurFactory is IArthurFactory {
     }
 
     function createPair(address tokenA, address tokenB, uint256 timeLock, uint256 startTime) external returns (address pair) {
-        require(tokenA != tokenB, "ArthurFactory: IDENTICAL_ADDRESSES");
+        require(tokenA != tokenB, "FlashpadFactory: IDENTICAL_ADDRESSES");
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), "ArthurFactory: ZERO_ADDRESS");
-        require(getPair[token0][token1] == address(0), "ArthurFactory: PAIR_EXISTS"); // single check is sufficient
-        bytes memory bytecode = type(ArthurPair).creationCode;
+        require(token0 != address(0), "FlashpadFactory: ZERO_ADDRESS");
+        require(getPair[token0][token1] == address(0), "FlashpadFactory: PAIR_EXISTS"); // single check is sufficient
+        bytes memory bytecode = type(FlashpadPair).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-        require(pair != address(0), "ArthurFactory: FAILED");
-        ArthurPair(pair).initialize(token0, token1, timeLock, startTime);
+        require(pair != address(0), "FlashpadFactory: FAILED");
+        FlashpadPair(pair).initialize(token0, token1, timeLock, startTime);
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
         allPairs.push(pair);
@@ -70,20 +70,20 @@ contract ArthurFactory is IArthurFactory {
     }
 
     function setOwner(address _owner) external onlyOwner {
-        require(_owner != address(0), "ArthurFactory: zero address");
+        require(_owner != address(0), "FlashpadFactory: zero address");
         emit OwnershipTransferred(owner, _owner);
         owner = _owner;
     }
 
     function setFeePercentOwner(address _feePercentOwner) external onlyOwner {
-        require(_feePercentOwner != address(0), "ArthurFactory: zero address");
+        require(_feePercentOwner != address(0), "FlashpadFactory: zero address");
         emit FeePercentOwnershipTransferred(feePercentOwner, _feePercentOwner);
         feePercentOwner = _feePercentOwner;
     }
 
     function setSetStableOwner(address _setStableOwner) external {
-        require(msg.sender == setStableOwner, "ArthurFactory: not setStableOwner");
-        require(_setStableOwner != address(0), "ArthurFactory: zero address");
+        require(msg.sender == setStableOwner, "FlashpadFactory: not setStableOwner");
+        require(_setStableOwner != address(0), "FlashpadFactory: zero address");
         emit SetStableOwnershipTransferred(setStableOwner, _setStableOwner);
         setStableOwner = _setStableOwner;
     }
@@ -99,8 +99,8 @@ contract ArthurFactory is IArthurFactory {
      * Must only be called by owner
      */
     function setOwnerFeeShare(uint newOwnerFeeShare) external onlyOwner {
-        require(newOwnerFeeShare > 0, "ArthurFactory: ownerFeeShare mustn't exceed minimum");
-        require(newOwnerFeeShare <= OWNER_FEE_SHARE_MAX, "ArthurFactory: ownerFeeShare mustn't exceed maximum");
+        require(newOwnerFeeShare > 0, "FlashpadFactory: ownerFeeShare mustn't exceed minimum");
+        require(newOwnerFeeShare <= OWNER_FEE_SHARE_MAX, "FlashpadFactory: ownerFeeShare mustn't exceed maximum");
         emit OwnerFeeShareUpdated(ownerFeeShare, newOwnerFeeShare);
         ownerFeeShare = newOwnerFeeShare;
     }
@@ -111,8 +111,8 @@ contract ArthurFactory is IArthurFactory {
      * Must only be called by owner
      */
     function setReferrerFeeShare(address referrer, uint referrerFeeShare) external onlyOwner {
-        require(referrer != address(0), "ArthurFactory: zero address");
-        require(referrerFeeShare <= REFERER_FEE_SHARE_MAX, "ArthurFactory: referrerFeeShare mustn't exceed maximum");
+        require(referrer != address(0), "FlashpadFactory: zero address");
+        require(referrerFeeShare <= REFERER_FEE_SHARE_MAX, "FlashpadFactory: referrerFeeShare mustn't exceed maximum");
         emit ReferrerFeeShareUpdated(referrer, referrersFeeShare[referrer], referrerFeeShare);
         referrersFeeShare[referrer] = referrerFeeShare;
     }

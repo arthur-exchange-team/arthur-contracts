@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "./interfaces/tokens/IArtToken.sol";
+import "./interfaces/tokens/IFlashToken.sol";
 
 
 /*
- * ART is Arthur's native ERC20 token.
+ * FLASH is Flashpad's native ERC20 token.
  * It has an hard cap and manages its own emissions and allocations.
  */
-contract ArtToken is Ownable, ERC20("Arthur token", "ART"), IArtToken {
+contract FlashToken is Ownable, ERC20("Flash token", "FLASH"), IFlashToken {
   using SafeMath for uint256;
 
   uint256 public constant MAX_EMISSION_RATE = 0.1 ether;
@@ -68,7 +68,7 @@ contract ArtToken is Ownable, ERC20("Arthur token", "ART"), IArtToken {
    * @dev Throws error if called by any account other than the master
    */
   modifier onlyMaster() {
-    require(msg.sender == masterAddress, "ArtToken: caller is not the master");
+    require(msg.sender == masterAddress, "FlashToken: caller is not the master");
     _;
   }
 
@@ -174,7 +174,7 @@ contract ArtToken is Ownable, ERC20("Arthur token", "ART"), IArtToken {
   }
 
   /**
-   * @dev Burns "amount" of ART by sending it to BURN_ADDRESS
+   * @dev Burns "amount" of FLASH by sending it to BURN_ADDRESS
    */
   function burn(uint256 amount) external override {
     _transfer(msg.sender, BURN_ADDRESS, amount);
@@ -232,7 +232,7 @@ contract ArtToken is Ownable, ERC20("Arthur token", "ART"), IArtToken {
   }
 
   /**
-   * @dev Updates ART emission rate per second
+   * @dev Updates FLASH emission rate per second
    *
    * Must only be called by the owner
    */
@@ -247,7 +247,7 @@ contract ArtToken is Ownable, ERC20("Arthur token", "ART"), IArtToken {
   }
 
   /**
-   * @dev Updates ART max supply
+   * @dev Updates FLASH max supply
    *
    * Must only be called by the owner
    */

@@ -16,7 +16,7 @@ async function main() {
     }
 
     //* Loading contract factory */
-    const ArthurRouter = await ethers.getContractFactory("ArthurRouter");
+    const FlashpadRouter = await ethers.getContractFactory("FlashpadRouter");
 
     //linea testnet
     // const factory = "0xf21BA8A951C2e43FC5eDF6E220D2328eA659c81C";
@@ -39,9 +39,9 @@ async function main() {
     console.log("DEPLOYING CONTRACTS");
     console.log("==========================================================================");
 
-    const arthurRouter = await ArthurRouter.deploy(factory, weth);
-    await arthurRouter.deployed();
-    console.log("ArthurRouter                        deployed to:>>", arthurRouter.address);
+    const flashpadRouter = await FlashpadRouter.deploy(factory, weth);
+    await flashpadRouter.deployed();
+    console.log("FlashpadRouter                        deployed to:>>", flashpadRouter.address);
 
     console.log("==========================================================================");
     console.log("VERIFY CONTRACTS");
@@ -49,7 +49,7 @@ async function main() {
 
     await hre
         .run("verify:verify", {
-            address: arthurRouter.address,
+            address: flashpadRouter.address,
             constructorArguments: [factory, weth]
         })
         .catch(console.log);

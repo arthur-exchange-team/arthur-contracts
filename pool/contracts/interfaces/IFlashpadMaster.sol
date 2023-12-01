@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-interface IArthurMaster {
+interface IFlashpadMaster {
 
-  function artToken() external view returns (address);
+  function flashToken() external view returns (address);
   function yieldBooster() external view returns (address);
   function owner() external view returns (address);
   function emergencyUnlock() external view returns (bool);

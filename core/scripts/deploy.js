@@ -16,7 +16,7 @@ async function main() {
     }
 
     //* Loading contract factory */
-    const ArthurFactory = await ethers.getContractFactory("ArthurFactory");
+    const FlashpadFactory = await ethers.getContractFactory("FlashpadFactory");
     const ProtocolEarnings = await ethers.getContractFactory("ProtocolEarnings");
     const dividendsWallet = "0x7029C1cD3C6C4B6ACC1967465E6a4187E733A202";
     const buybackAndBurnWallet = "0xe1e7B1257C5E914F90C838Bb1c92a3ac6ED74887";
@@ -33,11 +33,11 @@ async function main() {
     await protocolEarnings.deployed();
     console.log("ProtocolEarnings                          deployed to:>>", protocolEarnings.address);
 
-    const arthurFactory = await ArthurFactory.deploy(protocolEarnings.address);
-    await arthurFactory.deployed();
-    console.log("ArthurFactory                        deployed to:>>", arthurFactory.address);
+    const flashpadFactory = await FlashpadFactory.deploy(protocolEarnings.address);
+    await flashpadFactory.deployed();
+    console.log("FlashpadFactory                        deployed to:>>", flashpadFactory.address);
 
-    await arthurFactory.setOwnerFeeShare("40000");
+    await flashpadFactory.setOwnerFeeShare("40000");
 
     console.log("==========================================================================");
     console.log("VERIFY CONTRACTS");
@@ -45,14 +45,14 @@ async function main() {
 
     const contracts = {
         protocolEarnings: protocolEarnings.address,
-        arthurFactory: arthurFactory.address
+        flashpadFactory: flashpadFactory.address
     };
 
     await fs.writeFileSync("contracts.json", JSON.stringify(contracts));
 
     const contractVerify = {
         protocolEarnings: protocolEarnings.address,
-        arthurFactory: arthurFactory.address
+        flashpadFactory: flashpadFactory.address
     };
 
     await fs.writeFileSync("contracts-verify.json", JSON.stringify(contractVerify));
@@ -66,7 +66,7 @@ async function main() {
 
     await hre
         .run("verify:verify", {
-            address: arthurFactory.address,
+            address: flashpadFactory.address,
             constructorArguments: [protocolEarnings.address]
         })
         .catch(console.log);

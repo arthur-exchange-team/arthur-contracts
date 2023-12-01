@@ -2,7 +2,7 @@ pragma solidity >=0.6.2;
 
 import "./IUniswapV2Router01.sol";
 
-interface IArthurRouter is IUniswapV2Router01 {
+interface IFlashpadRouter is IUniswapV2Router01 {
   function removeLiquidityETHSupportingFeeOnTransferTokens(
     address token,
     uint liquidity,

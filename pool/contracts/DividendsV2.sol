@@ -8,11 +8,11 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./interfaces/IDividendsV2.sol";
-import "./interfaces/IXArtTokenUsage.sol";
+import "./interfaces/IXFlashTokenUsage.sol";
 
 
 /*
- * This contract is used to distribute dividends to users that allocated xArt here
+ * This contract is used to distribute dividends to users that allocated xFlash here
  *
  * Dividends can be distributed in the form of one or more tokens
  * They are mainly managed to be received from the FeeManager contract, but other sources can be added (dev wallet for instance)
@@ -20,12 +20,12 @@ import "./interfaces/IXArtTokenUsage.sol";
  * The freshly received dividends are stored in a pending slot
  *
  * The content of this pending slot will be progressively transferred over time into a distribution slot
- * This distribution slot is the source of the dividends distribution to xArt allocators during the current cycle
+ * This distribution slot is the source of the dividends distribution to xFlash allocators during the current cycle
  *
  * This transfer from the pending slot to the distribution slot is based on cycleDividendsPercent and CYCLE_PERIOD_SECONDS
  *
  */
-contract DividendsV2 is Ownable, ReentrancyGuard, IXArtTokenUsage, IDividendsV2 {
+contract DividendsV2 is Ownable, ReentrancyGuard, IXFlashTokenUsage, IDividendsV2 {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
   using EnumerableSet for EnumerableSet.AddressSet;
@@ -54,10 +54,10 @@ contract DividendsV2 is Ownable, ReentrancyGuard, IXArtTokenUsage, IDividendsV2 
   mapping(address => DividendsInfo) public dividendsInfo;
   mapping(address => mapping(address => UserInfo)) public users;
 
-  address public immutable xArtToken; // xArtToken contract
+  address public immutable xFlashToken; // xFlashToken contract
 
-  mapping(address => uint256) public usersAllocation; // User's xArt allocation
-  uint256 public totalAllocation; // Contract's total xArt allocation
+  mapping(address => uint256) public usersAllocation; // User's xFlash allocation
+  uint256 public totalAllocation; // Contract's total xFlash allocation
 
   uint256 public constant MIN_CYCLE_DIVIDENDS_PERCENT = 1; // 0.01%
   uint256 public constant DEFAULT_CYCLE_DIVIDENDS_PERCENT = 100; // 1%
@@ -66,9 +66,9 @@ contract DividendsV2 is Ownable, ReentrancyGuard, IXArtTokenUsage, IDividendsV2 
   uint256 internal _cycleDurationSeconds = 7 days;
   uint256 public currentCycleStartTime;
 
-  constructor(address xArtToken_, uint256 startTime_) {
-    require(xArtToken_ != address(0), "zero address");
-    xArtToken = xArtToken_;
+  constructor(address xFlashToken_, uint256 startTime_) {
+    require(xFlashToken_ != address(0), "zero address");
+    xFlashToken = xFlashToken_;
     currentCycleStartTime = startTime_;
   }
 
@@ -105,10 +105,10 @@ contract DividendsV2 is Ownable, ReentrancyGuard, IXArtTokenUsage, IDividendsV2 
   }
 
   /**
-   * @dev Checks if caller is the xArtToken contract
+   * @dev Checks if caller is the xFlashToken contract
    */
-  modifier xArtTokenOnly() {
-    require(msg.sender == xArtToken, "xArtTokenOnly: caller should be XArtToken");
+  modifier xFlashTokenOnly() {
+    require(msg.sender == xFlashToken, "xFlashTokenOnly: caller should be XFlashToken");
     _;
   }
 
@@ -284,24 +284,24 @@ contract DividendsV2 is Ownable, ReentrancyGuard, IXArtTokenUsage, IDividendsV2 
   /*****************************************************************/
 
   /**
-   * Allocates "userAddress" user's "amount" of xArt to this dividends contract
+   * Allocates "userAddress" user's "amount" of xFlash to this dividends contract
    *
-   * Can only be called by xArtToken contract, which is trusted to verify amounts
-   * "data" is only here for compatibility reasons (IxArtTokenUsage)
+   * Can only be called by xFlashToken contract, which is trusted to verify amounts
+   * "data" is only here for compatibility reasons (IxFlashTokenUsage)
    */
-  function allocate(address userAddress, uint256 amount, bytes calldata /*data*/) external override nonReentrant xArtTokenOnly {
+  function allocate(address userAddress, uint256 amount, bytes calldata /*data*/) external override nonReentrant xFlashTokenOnly {
     uint256 newUserAllocation = usersAllocation[userAddress].add(amount);
     uint256 newTotalAllocation = totalAllocation.add(amount);
     _updateUser(userAddress, newUserAllocation, newTotalAllocation);
   }
 
   /**
-   * Deallocates "userAddress" user's "amount" of xArt allocation from this dividends contract
+   * Deallocates "userAddress" user's "amount" of xFlash allocation from this dividends contract
    *
-   * Can only be called by xArtToken contract, which is trusted to verify amounts
-   * "data" is only here for compatibility reasons (IxArtTokenUsage)
+   * Can only be called by xFlashToken contract, which is trusted to verify amounts
+   * "data" is only here for compatibility reasons (IxFlashTokenUsage)
    */
-  function deallocate(address userAddress, uint256 amount, bytes calldata /*data*/) external override nonReentrant xArtTokenOnly {
+  function deallocate(address userAddress, uint256 amount, bytes calldata /*data*/) external override nonReentrant xFlashTokenOnly {
     uint256 newUserAllocation = usersAllocation[userAddress].sub(amount);
     uint256 newTotalAllocation = totalAllocation.sub(amount);
     _updateUser(userAddress, newUserAllocation, newTotalAllocation);
@@ -400,7 +400,7 @@ contract DividendsV2 is Ownable, ReentrancyGuard, IXArtTokenUsage, IDividendsV2 
       return;
     }
 
-    // if no xArt is allocated or initial distribution has not started yet
+    // if no xFlash is allocated or initial distribution has not started yet
     if (totalAllocation == 0 || currentBlockTimestamp < currentCycleStartTime) {
       dividendsInfo_.lastUpdateTime = currentBlockTimestamp;
       return;

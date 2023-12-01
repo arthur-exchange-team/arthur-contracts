@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-interface IMerlinCustomReq {
+interface IThunderCustomReq {
     function canDepositDescription() external view returns (string calldata);
     function canHarvestDescription() external view returns (string calldata);
 

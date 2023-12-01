@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "./interfaces/IArthurRouter.sol";
+import "./interfaces/IFlashpadRouter.sol";
 import "./interfaces/INFTPool.sol";
 
 contract PositionHelper is ReentrancyGuard {
@@ -15,13 +15,13 @@ contract PositionHelper is ReentrancyGuard {
   using SafeMath for uint256;
 
   bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
-  IArthurRouter public immutable router;
+  IFlashpadRouter public immutable router;
   address public immutable weth;
 
   uint256 expectedTokenId;
   address expectedNftPool;
 
-  constructor(IArthurRouter router_, address weth_){
+  constructor(IFlashpadRouter router_, address weth_){
     router = router_;
     weth = weth_;
   }
