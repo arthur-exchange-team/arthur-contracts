@@ -27,7 +27,7 @@ async function main() {
     console.log("DEPLOYING CONTRACTS");
     console.log("==========================================================================");
 
-    // const protocolEarnings = await ProtocolEarnings.attach("0x9C50E2dC5AAFDa51B7739075368E14413a908Ebf");
+    // const protocolEarnings = await ProtocolEarnings.attach("0x98D740Bd10b783f8c0cDE068A58F334632d53b0d");
 
     const protocolEarnings = await ProtocolEarnings.deploy(dividendsWallet, buybackAndBurnWallet, operatingFundsWallet);
     await protocolEarnings.deployed();

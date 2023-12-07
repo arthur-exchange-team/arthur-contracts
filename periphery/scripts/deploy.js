@@ -23,7 +23,7 @@ async function main() {
     // const weth = "0xbe2C5113EebFe4C083da31346534CEA1cd2bBC46";
 
     //linea mainnet
-    const factory = "0x7f7ae0Ab3783408D30C978831e0d8d0F074a9c5D";
+    const factory = "0xa35853A052d566F1C682724451A263f7437E9571";
     const weth = "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f";
 
     // sepolia
