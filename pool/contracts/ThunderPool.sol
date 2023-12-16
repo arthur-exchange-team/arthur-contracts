@@ -16,7 +16,6 @@ import "./interfaces/tokens/IFlashToken.sol";
 import "./interfaces/tokens/IXFlashToken.sol";
 import "./interfaces/IThunderCustomReq.sol";
 
-
 contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     using EnumerableSet for EnumerableSet.UintSet;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -87,15 +86,32 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     Settings public settings; // global and requirements settings
 
     constructor(
-        IFlashToken flashToken_, IXFlashToken xFlashToken_, address owner_, INFTPool nftPool_,
-        IERC20 rewardsToken1_, IERC20 rewardsToken2_, Settings memory settings_
+        IFlashToken flashToken_,
+        IXFlashToken xFlashToken_,
+        address owner_,
+        INFTPool nftPool_,
+        IERC20 rewardsToken1_,
+        IERC20 rewardsToken2_,
+        Settings memory settings_
     ) {
-        require(address(flashToken_) != address(0) && address(xFlashToken_) != address(0) && owner_ != address(0)
-            && address(nftPool_) != address(0) && address(rewardsToken1_) != address(0), "zero address");
+        require(
+            address(flashToken_) != address(0) &&
+                address(xFlashToken_) != address(0) &&
+                owner_ != address(0) &&
+                address(nftPool_) != address(0) &&
+                address(rewardsToken1_) != address(0),
+            "zero address"
+        );
         require(_currentBlockTimestamp() < settings_.startTime, "invalid startTime");
         require(settings_.startTime < settings_.endTime, "invalid endTime");
-        require(settings_.depositEndTime == 0 || settings_.startTime <= settings_.depositEndTime, "invalid depositEndTime");
-        require(settings_.harvestStartTime == 0 || settings_.startTime <= settings_.harvestStartTime, "invalid harvestStartTime");
+        require(
+            settings_.depositEndTime == 0 || settings_.startTime <= settings_.depositEndTime,
+            "invalid depositEndTime"
+        );
+        require(
+            settings_.harvestStartTime == 0 || settings_.startTime <= settings_.harvestStartTime,
+            "invalid harvestStartTime"
+        );
         require(address(rewardsToken1_) != address(rewardsToken2_), "invalid tokens");
 
         factory = IThunderPoolFactory(msg.sender);
@@ -118,11 +134,15 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
 
         settings.description = settings_.description;
 
-        _setRequirements(settings_.lockDurationReq, settings_.lockEndReq, settings_.depositAmountReq, settings_.whitelist);
+        _setRequirements(
+            settings_.lockDurationReq,
+            settings_.lockEndReq,
+            settings_.depositAmountReq,
+            settings_.whitelist
+        );
 
         Ownable.transferOwnership(owner_);
     }
-
 
     /********************************************/
     /****************** EVENTS ******************/
@@ -145,7 +165,6 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     event EmergencyWithdraw(address indexed userAddress, uint256 tokenId, uint256 amount);
     event WithdrawRewardsToken1(uint256 amount, uint256 totalRewardsAmount);
     event WithdrawRewardsToken2(uint256 amount, uint256 totalRewardsAmount);
-
 
     /**************************************************/
     /****************** PUBLIC VIEWS ******************/
@@ -224,10 +243,13 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
             if (rewardsAmount > rewardsToken2.remainingAmount) rewardsAmount = rewardsToken2.remainingAmount;
             accRewardsToken2PerShare_ = accRewardsToken2PerShare_.add(rewardsAmount.mul(1e18).div(totalDepositAmount));
         }
-        pending1 = (user.totalDepositAmount.mul(accRewardsToken1PerShare_).div(1e18).sub(user.rewardDebtToken1)).add(user.pendingRewardsToken1);
-        pending2 = (user.totalDepositAmount.mul(accRewardsToken2PerShare_).div(1e18).sub(user.rewardDebtToken2)).add(user.pendingRewardsToken2);
+        pending1 = (user.totalDepositAmount.mul(accRewardsToken1PerShare_).div(1e18).sub(user.rewardDebtToken1)).add(
+            user.pendingRewardsToken1
+        );
+        pending2 = (user.totalDepositAmount.mul(accRewardsToken2PerShare_).div(1e18).sub(user.rewardDebtToken2)).add(
+            user.pendingRewardsToken2
+        );
     }
-
 
     /***********************************************/
     /****************** MODIFIERS ******************/
@@ -237,7 +259,6 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
         require(sender == address(nftPool), "invalid NFTPool");
         _;
     }
-
 
     /*****************************************************************/
     /******************  EXTERNAL PUBLIC FUNCTIONS  ******************/
@@ -253,7 +274,12 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     /**
      * @dev Automatically stakes transferred positions from a NFTPool
      */
-    function onERC721Received(address /*operator*/, address from, uint256 tokenId, bytes calldata /*data*/) external override nonReentrant isValidNFTPool(msg.sender) returns (bytes4) {
+    function onERC721Received(
+        address /*operator*/,
+        address from,
+        uint256 tokenId,
+        bytes calldata /*data*/
+    ) external override nonReentrant isValidNFTPool(msg.sender) returns (bytes4) {
         require(published, "not published");
         require(!settings.whitelist || _whitelistedUsers.contains(from), "not whitelisted");
 
@@ -261,7 +287,7 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
         _userTokenIds[from].add(tokenId);
         tokenIdOwner[tokenId] = from;
 
-        (uint256 amount,uint256 startLockTime, uint256 lockDuration) = _getStackingPosition(tokenId);
+        (uint256 amount, uint256 startLockTime, uint256 lockDuration) = _getStackingPosition(tokenId);
         _checkPositionRequirements(amount, startLockTime, lockDuration);
 
         _deposit(from, tokenId, amount);
@@ -279,7 +305,7 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     function withdraw(uint256 tokenId) external virtual nonReentrant {
         require(msg.sender == tokenIdOwner[tokenId], "not allowed");
 
-        (uint256 amount,,) = _getStackingPosition(tokenId);
+        (uint256 amount, , ) = _getStackingPosition(tokenId);
 
         _updatePool();
         UserInfo storage user = userInfo[msg.sender];
@@ -307,7 +333,7 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     function emergencyWithdraw(uint256 tokenId) external virtual nonReentrant {
         require(msg.sender == tokenIdOwner[tokenId], "not allowed");
 
-        (uint256 amount,,) = _getStackingPosition(tokenId);
+        (uint256 amount, , ) = _getStackingPosition(tokenId);
         UserInfo storage user = userInfo[msg.sender];
         user.totalDepositAmount = user.totalDepositAmount.sub(amount);
         totalDepositAmount = totalDepositAmount.sub(amount);
@@ -339,7 +365,13 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
      * "to" can be set to token's previous owner
      * "to" can be set to this address only if this contract is allowed to transfer xFLASH
      */
-    function onNFTHarvest(address operator, address to, uint256 tokenId, uint256 artAmount, uint256 xFlashAmount) external override isValidNFTPool(msg.sender) returns (bool) {
+    function onNFTHarvest(
+        address operator,
+        address to,
+        uint256 tokenId,
+        uint256 flashAmount,
+        uint256 xFlashAmount
+    ) external override isValidNFTPool(msg.sender) returns (bool) {
         address owner = tokenIdOwner[tokenId];
         require(operator == owner, "not allowed");
 
@@ -348,7 +380,7 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
 
         // redirect rewards to position's previous owner
         if (to == address(this)) {
-            flashToken.safeTransfer(owner, artAmount);
+            flashToken.safeTransfer(owner, flashAmount);
             xFlashToken.safeTransfer(owner, xFlashAmount);
         }
 
@@ -358,7 +390,11 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     /**
      * @dev Allow position's previous owner to add more assets to his position
      */
-    function onNFTAddToPosition(address operator, uint256 tokenId, uint256 amount) external override nonReentrant isValidNFTPool(msg.sender) returns (bool) {
+    function onNFTAddToPosition(
+        address operator,
+        uint256 tokenId,
+        uint256 amount
+    ) external override nonReentrant isValidNFTPool(msg.sender) returns (bool) {
         require(operator == tokenIdOwner[tokenId], "not allowed");
         _deposit(operator, tokenId, amount);
         return true;
@@ -367,10 +403,13 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     /**
      * @dev Disallow withdraw assets from a stacked position
      */
-    function onNFTWithdraw(address /*operator*/, uint256 /*tokenId*/, uint256 /*amount*/) external pure override returns (bool){
+    function onNFTWithdraw(
+        address /*operator*/,
+        uint256 /*tokenId*/,
+        uint256 /*amount*/
+    ) external pure override returns (bool) {
         return false;
     }
-
 
     /*****************************************************************/
     /****************** EXTERNAL OWNABLE FUNCTIONS  ******************/
@@ -411,7 +450,11 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
         if (amountToken1 > 0) {
             // token1 fee
             feeAmount = amountToken1.mul(feeShare).div(10000);
-            amountToken1 = _transferSupportingFeeOnTransfer(rewardsToken1.token, msg.sender, amountToken1.sub(feeAmount));
+            amountToken1 = _transferSupportingFeeOnTransfer(
+                rewardsToken1.token,
+                msg.sender,
+                amountToken1.sub(feeAmount)
+            );
 
             // recomputes rewards to distribute
             rewardsToken1.amount = rewardsToken1.amount.add(amountToken1);
@@ -429,7 +472,11 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
 
             // token2 fee
             feeAmount = amountToken2.mul(feeShare).div(10000);
-            amountToken2 = _transferSupportingFeeOnTransfer(rewardsToken2.token, msg.sender, amountToken2.sub(feeAmount));
+            amountToken2 = _transferSupportingFeeOnTransfer(
+                rewardsToken2.token,
+                msg.sender,
+                amountToken2.sub(feeAmount)
+            );
 
             // recomputes rewards to distribute
             rewardsToken2.amount = rewardsToken2.amount.add(amountToken2);
@@ -502,7 +549,12 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
      *
      * Must only be called by the owner
      */
-    function setRequirements(uint256 lockDurationReq_, uint256 lockEndReq_, uint256 depositAmountReq_, bool whitelist_) external onlyOwner {
+    function setRequirements(
+        uint256 lockDurationReq_,
+        uint256 lockEndReq_,
+        uint256 depositAmountReq_,
+        bool whitelist_
+    ) external onlyOwner {
         _setRequirements(lockDurationReq_, lockEndReq_, depositAmountReq_, whitelist_);
     }
 
@@ -514,7 +566,11 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
      * Harvest start time can only be updated if not published
      * Deposit end time can only be updated if not been published
      */
-    function setDateSettings(uint256 endTime_, uint256 harvestStartTime_, uint256 depositEndTime_) external nonReentrant onlyOwner {
+    function setDateSettings(
+        uint256 endTime_,
+        uint256 harvestStartTime_,
+        uint256 depositEndTime_
+    ) external nonReentrant onlyOwner {
         require(settings.startTime < endTime_, "invalid endTime");
         require(_currentBlockTimestamp() <= settings.endTime, "pool ended");
         require(depositEndTime_ == 0 || settings.startTime <= depositEndTime_, "invalid depositEndTime");
@@ -624,7 +680,6 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
         _safeRewardsTransfer(rewardsToken2.token, emergencyRecoveryAddress, remainingToken2);
     }
 
-
     /********************************************************/
     /****************** INTERNAL FUNCTIONS ******************/
     /********************************************************/
@@ -632,7 +687,12 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     /**
      * @dev Set requirements that positions must meet to be staked on this Thunder Pool
      */
-    function _setRequirements(uint256 lockDurationReq_, uint256 lockEndReq_, uint256 depositAmountReq_, bool whitelist_) internal {
+    function _setRequirements(
+        uint256 lockDurationReq_,
+        uint256 lockEndReq_,
+        uint256 depositAmountReq_,
+        bool whitelist_
+    ) internal {
         require(lockEndReq_ == 0 || settings.startTime < lockEndReq_, "invalid lockEnd");
 
         if (published) {
@@ -671,7 +731,9 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
         // ensure we do not distribute more than what's available
         if (rewardsAmount > rewardsToken1.remainingAmount) rewardsAmount = rewardsToken1.remainingAmount;
         rewardsToken1.remainingAmount = rewardsToken1.remainingAmount.sub(rewardsAmount);
-        rewardsToken1.accRewardsPerShare = rewardsToken1.accRewardsPerShare.add(rewardsAmount.mul(1e18).div(totalDepositAmount));
+        rewardsToken1.accRewardsPerShare = rewardsToken1.accRewardsPerShare.add(
+            rewardsAmount.mul(1e18).div(totalDepositAmount)
+        );
 
         // if rewardsToken2 is activated
         if (address(rewardsToken2.token) != address(0)) {
@@ -680,7 +742,9 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
             // ensure we do not distribute more than what's available
             if (rewardsAmount > rewardsToken2.remainingAmount) rewardsAmount = rewardsToken2.remainingAmount;
             rewardsToken2.remainingAmount = rewardsToken2.remainingAmount.sub(rewardsAmount);
-            rewardsToken2.accRewardsPerShare = rewardsToken2.accRewardsPerShare.add(rewardsAmount.mul(1e18).div(totalDepositAmount));
+            rewardsToken2.accRewardsPerShare = rewardsToken2.accRewardsPerShare.add(
+                rewardsAmount.mul(1e18).div(totalDepositAmount)
+            );
         }
 
         lastRewardTime = currentBlockTimestamp;
@@ -691,9 +755,12 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
      * @dev Add a user's deposited amount into this Thunder Pool
      */
     function _deposit(address account, uint256 tokenId, uint256 amount) internal {
-        require((settings.depositEndTime == 0 || settings.depositEndTime >= _currentBlockTimestamp()) && !emergencyClose, "not allowed");
+        require(
+            (settings.depositEndTime == 0 || settings.depositEndTime >= _currentBlockTimestamp()) && !emergencyClose,
+            "not allowed"
+        );
 
-        if(address(customReqContract) != address(0)){
+        if (address(customReqContract) != address(0)) {
             require(customReqContract.canDeposit(account, tokenId), "invalid customReq");
         }
 
@@ -714,12 +781,14 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
      */
     function _harvest(UserInfo storage user, address to) internal {
         bool canHarvest = true;
-        if(address(customReqContract) != address(0)){
+        if (address(customReqContract) != address(0)) {
             canHarvest = customReqContract.canHarvest(to);
         }
 
         // rewardsToken1
-        uint256 pending = user.totalDepositAmount.mul(rewardsToken1.accRewardsPerShare).div(1e18).sub(user.rewardDebtToken1);
+        uint256 pending = user.totalDepositAmount.mul(rewardsToken1.accRewardsPerShare).div(1e18).sub(
+            user.rewardDebtToken1
+        );
         // check if harvest is allowed
         if (_currentBlockTimestamp() < settings.harvestStartTime || !canHarvest) {
             // if not allowed, add to rewards buffer
@@ -735,7 +804,9 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
 
         // rewardsToken2 (if initialized)
         if (address(rewardsToken2.token) != address(0)) {
-            pending = user.totalDepositAmount.mul(rewardsToken2.accRewardsPerShare).div(1e18).sub(user.rewardDebtToken2);
+            pending = user.totalDepositAmount.mul(rewardsToken2.accRewardsPerShare).div(1e18).sub(
+                user.rewardDebtToken2
+            );
             // check if harvest is allowed
             if (_currentBlockTimestamp() < settings.harvestStartTime || !canHarvest) {
                 // if not allowed, add to rewards buffer
@@ -756,10 +827,10 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
      */
     function _updateRewardDebt(UserInfo storage user) internal virtual {
         (bool succeed, uint256 result) = user.totalDepositAmount.tryMul(rewardsToken1.accRewardsPerShare);
-        if(succeed) user.rewardDebtToken1 = result.div(1e18);
+        if (succeed) user.rewardDebtToken1 = result.div(1e18);
 
         (succeed, result) = user.totalDepositAmount.tryMul(rewardsToken2.accRewardsPerShare);
-        if(succeed) user.rewardDebtToken2 = result.div(1e18);
+        if (succeed) user.rewardDebtToken2 = result.div(1e18);
     }
 
     /**
@@ -769,7 +840,10 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
         // lock duration requirement
         if (settings.lockDurationReq > 0) {
             // for unlocked position that have not been updated yet
-            require(_currentBlockTimestamp() < startLockTime.add(lockDuration) && settings.lockDurationReq <= lockDuration, "invalid lockDuration");
+            require(
+                _currentBlockTimestamp() < startLockTime.add(lockDuration) && settings.lockDurationReq <= lockDuration,
+                "invalid lockDuration"
+            );
         }
 
         // lock end time requirement
@@ -784,20 +858,23 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
     }
 
     /**
-  * @dev Handle deposits of tokens with transfer tax
-  */
-    function _transferSupportingFeeOnTransfer(IERC20 token, address user, uint256 amount) internal returns (uint256 receivedAmount) {
+     * @dev Handle deposits of tokens with transfer tax
+     */
+    function _transferSupportingFeeOnTransfer(
+        IERC20 token,
+        address user,
+        uint256 amount
+    ) internal returns (uint256 receivedAmount) {
         uint256 previousBalance = token.balanceOf(address(this));
         token.safeTransferFrom(user, address(this), amount);
         return token.balanceOf(address(this)).sub(previousBalance);
     }
 
-
     /**
      * @dev Safe token transfer function, in case rounding error causes pool to not have enough tokens
      */
     function _safeRewardsTransfer(IERC20 token, address to, uint256 amount) internal virtual {
-        if(amount == 0) return;
+        if (amount == 0) return;
 
         uint256 balance = token.balanceOf(address(this));
         // cap to available balance
@@ -807,9 +884,10 @@ contract ThunderPool is ReentrancyGuard, Ownable, INFTHandler {
         token.safeTransfer(to, amount);
     }
 
-
-    function _getStackingPosition(uint256 tokenId) internal view returns (uint256 amount, uint256 startLockTime, uint256 lockDuration) {
-        (amount,, startLockTime, lockDuration,,,,) = nftPool.getStakingPosition(tokenId);
+    function _getStackingPosition(
+        uint256 tokenId
+    ) internal view returns (uint256 amount, uint256 startLockTime, uint256 lockDuration) {
+        (amount, , startLockTime, lockDuration, , , , ) = nftPool.getStakingPosition(tokenId);
     }
 
     function _setThunderPoolOwner(address newOwner) internal {

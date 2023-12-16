@@ -305,10 +305,10 @@ contract FlashpadMaster is Ownable, IFlashpadMaster {
    * @dev Safe token transfer function, in case rounding error causes pool to not have enough tokens
    */
   function _safeRewardsTransfer(address to, uint256 amount) internal returns (uint256 effectiveAmount) {
-    uint256 artBalance = _flashToken.balanceOf(address(this));
+    uint256 flashBalance = _flashToken.balanceOf(address(this));
 
-    if (amount > artBalance) {
-      amount = artBalance;
+    if (amount > flashBalance) {
+      amount = flashBalance;
     }
 
     _flashToken.safeTransfer(to, amount);
